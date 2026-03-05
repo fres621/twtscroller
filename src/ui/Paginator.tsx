@@ -6,16 +6,16 @@ window.registerStyles({
 });
 
 export interface PaginatorProps {
-    pageAmount: number;
-    onClickPage: (page: number) => void;
-    selectedPage: number;
+    pages: { label: string; id: string; }[];
+    onClickPage: (id: string) => void;
+    selectedPageId: string;
 }
 
 export function Paginator(props: PaginatorProps) {
     return (
         <div>
-            {Array.from({ length: props.pageAmount }, (_, i) => i).map(page => (
-                <span onClick={_ => props.onClickPage(page)} className={"paginator-page " + (page == props.selectedPage ? " paginator-page-selected" : "")}>{page + 1}</span>
+            {props.pages.map(page => (
+                <span onClick={_ => props.onClickPage(page.id)} className={"paginator-page " + (page.id == props.selectedPageId ? " paginator-page-selected" : "")}>{page.label}</span>
             ))}
         </div>
     )

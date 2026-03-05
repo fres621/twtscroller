@@ -1,9 +1,11 @@
 import type { Entry, Tweet, TweetLegacy } from '../types/api'
 import { Paginator } from './Paginator';
-import { apiClient, featureSwitches, makeFetcher, userId, React, ReactDOM } from '@finds';
+import { apiClient, featureSwitches, makeFetcher, userId, React, ReactDOM, tweetTextParts, TextPart, TweetImage } from '@finds';
 import { FetcherModule, Page, pageFetcher } from '@fetcher';
 
-function renderContentAST(ast: any) {
+function renderContentAST(ast: any[]) {
+    // if (!ast.length) return null;
+    // return ast.map((part,key) => <TextPart part={part} key={key} linkify={true} />);
     let colors: Record<string, string> = { hashtag: 'blue', mention: 'blue' };
     return (
         <span>
@@ -48,28 +50,30 @@ function renderImage(image: any) {
             width: image.original_info.width,
         },
     };
-    console.log('oh img', image);
-    return <img src={image.media_url_https} style={{ maxWidth: "100%", objectFit: "contain" }} />;
-    // return React.createElement(wreq(110377).j, props);
+    // console.log('oh img', image);
+    // return <img src={image.media_url_https} style={{ maxWidth: "100%", objectFit: "contain" }} />;
+    return React.createElement(TweetImage, props);
 }
 
 
 // type Result = NonNullable<(typeof sample[0]['entries'])[number]['content']['itemContent']>['tweet_results']['result'];
 
 function getAST(tweet: TweetLegacy) {
-    console.log('get ast', tweet);
-    return [{ text: tweet.full_text }];
+    // console.log('get ast', tweet);
+    return tweetTextParts(tweet.full_text, tweet.display_text_range, tweet.entities);
+    // return [{ text: tweet.full_text }];
     // return wreq(310452).ZP.tweetTextParts(tweet.full_text, tweet.display_text_range, tweet.entities);
 }
 
-function Tweet({ result }: { result: Tweet }) {
-    console.log({ tweet: result });
+const Tweet = React.memo(({ result }: { result: Tweet }) => {
     let tweet = "tweet" in result ? result.tweet as Tweet : result;
     let author = tweet.core.user_results.result;
     return (
         <div style={{ borderBottom: 'gray solid 1px', display: 'flex', gap: 4, padding: 4 }}>
-            <img src={author.avatar.image_url} style={{ width: 32, height: 32, borderRadius: 16 }} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <a href={`https://x.com/${author.core.screen_name}/status/${tweet.rest_id}`} target="_blank" rel="noopener noreferrer">
+                <img src={author.avatar.image_url} style={{ width: 32, height: 32, borderRadius: 16 }} />
+            </a>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <span>
                     <b>{author.core.name}</b> @{author.core.screen_name}
                 </span>
@@ -83,7 +87,7 @@ function Tweet({ result }: { result: Tweet }) {
             </div>
         </div>
     );
-}
+});
 
 
 export async function startAndInject() {
@@ -91,7 +95,13 @@ export async function startAndInject() {
         apiClient,
         featureSwitches
     });
-    let fetcher = pageFetcher({ mod, userId, pagesToKeep: 25, eachPause: 500, tenPause: 4000 });
+    let initialState: any = localStorage.getItem("gaycache");
+    if (initialState && window.confirm("Use stored state?")) {
+        initialState = JSON.parse(initialState);
+    } else {
+        initialState = undefined;
+    }
+    let fetcher = pageFetcher({ mod, userId, pagesToKeep: 2, eachPause: 500, tenPause: 2000, initialState });
     fetcher.start();
     ReactDOM.createRoot(document.querySelector('section')).render(React.createElement(App, { fetcher }));
 }
@@ -100,37 +110,68 @@ function isTweetEntry(entry: Entry) {
     return !!entry.content.itemContent;
 }
 
+class ErrorBoundary extends React.Component<any, any> {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error) {
+        // Update state so the next render will show the fallback UI.
+        return { hasError: true };
+    }
+
+    componentDidCatch(error, info) {
+
+    }
+
+    render() {
+        if (this.state.hasError) {
+            // You can render any custom fallback UI
+            return this.props.fallback;
+        }
+
+        return this.props.children;
+    }
+}
+
+const NoPage = Symbol("NoPage");
 export function App({ fetcher }: { fetcher: FetcherModule }) {
-    let pages = fetcher.useProgress();
-    let [page, setPage] = React.useState(-1);
+    let pages = fetcher.usePages();
+    let [page, setPage] = React.useState<string | typeof NoPage>(NoPage);
     let [pageContent, setPageContent] = React.useState<Page | null>(null);
     const outOfPageLimbo = React.useRef(false);
-
+    // console.log(pages.length, pages, pageContent);
     React.useEffect(() => {
-        if (!outOfPageLimbo.current && pages > 0) {
+        if (!outOfPageLimbo.current && pages.length > 0) {
             outOfPageLimbo.current = true;
-            setPage(0);
+            setPage(pages[0].id);
         }
     }, [pages]);
 
     React.useEffect(() => {
-        if (page == -1) return;
+        // console.log(4);
+        if (page === NoPage) return;
         async function loadPage() {
-            const content = await fetcher.getOrFetchPageNumber(page);
+            const content = await fetcher.getOrFetch(page as string);
             setPageContent(content);
         }
         loadPage();
     }, [page]);
-
     return (
         <>
-            <Paginator pageAmount={pages} onClickPage={(i) => setPage(i)} selectedPage={page} />
+            <Paginator pages={pages} onClickPage={(cursor) => setPage(cursor)} selectedPageId={page === NoPage ? "" : page} />
             {pageContent && (
-                pageContent.entries.filter(isTweetEntry).map(entry => (
-                    <Tweet
-                        result={entry.content.itemContent?.tweet_results.result!}
-                    />
-                ))
+                <>
+                    {pageContent.entries.filter(isTweetEntry).map(entry => (
+                        <ErrorBoundary fallback={<p>Error loading tweet</p>}>
+                            <Tweet
+                                result={entry.content.itemContent?.tweet_results.result!}
+                            />
+                        </ErrorBoundary>
+                    ))}
+                    <Paginator pages={pages} onClickPage={(cursor) => setPage(cursor)} selectedPageId={page === NoPage ? "" : page} />
+                </>
             )}
         </>
     )
