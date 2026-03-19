@@ -50,10 +50,11 @@ let scr = [...document.querySelectorAll<HTMLScriptElement>("body > script")].fin
 let session = JSON.parse(scr.slice(scr.indexOf(`"session"`) + 10, scr.indexOf("userFeatures") - 2) + "}");
 export const userId = session.user_id;
 
-export const tweetTextParts = Object.values(_mods).find(e=>e.exports?.ZP?.tweetTextParts).exports.ZP.tweetTextParts ?? some(a=>a.toString().includes("tweetTextParts"));
+export const tweetTextParts = Object.values(_mods).find(e=>e.exports?.ZP?.tweetTextParts).exports?.ZP?.tweetTextParts ?? some(a=>a.toString().includes("tweetTextParts"));
 export const React: typeof import("react") = Object.values(_mods).find(e=>e.exports?.useEffect).exports;
 export const ReactDOM: typeof import("react-dom/client") = Object.values(_mods).find(e=>e.exports?.createPortal).exports;
 
 // { key: any; linkify: true, part: part }
 export const TextPart = some(e => e.type?.toString().includes(".MENTION?"));
-export const TweetImage = wreq(73673).Z;
+// export const TweetImage = wreq(73673).Z;
+export const TweetImage = some(e => e?.prototype?._renderImage);

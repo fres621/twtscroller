@@ -19,7 +19,6 @@ let _mods = window.webpackChunk_twitter_responsive_web.push([
 	(r) => r.c
 ]);
 window.webpackChunk_twitter_responsive_web.pop();
-let wreq = (i) => Object.values(_mods).find((e) => e.id == i).exports;
 function some(condition) {
 	for (let e of Object.values(_mods)) try {
 		for (let a of Object.values(e.exports)) if (condition(a)) return a;
@@ -43,11 +42,11 @@ apiClient.client._dispatch = (data) => req({
 let scr = [...document.querySelectorAll("body > script")].find((e) => e.innerText.includes("INITIAL_STATE")).innerText;
 let session = JSON.parse(scr.slice(scr.indexOf(`"session"`) + 10, scr.indexOf("userFeatures") - 2) + "}");
 const userId = session.user_id;
-const tweetTextParts = Object.values(_mods).find((e) => e.exports?.ZP?.tweetTextParts).exports.ZP.tweetTextParts ?? some((a) => a.toString().includes("tweetTextParts"));
+const tweetTextParts = Object.values(_mods).find((e) => e.exports?.ZP?.tweetTextParts).exports?.ZP?.tweetTextParts ?? some((a) => a.toString().includes("tweetTextParts"));
 const React = Object.values(_mods).find((e) => e.exports?.useEffect).exports;
 const ReactDOM = Object.values(_mods).find((e) => e.exports?.createPortal).exports;
 const TextPart = some((e) => e.type?.toString().includes(".MENTION?"));
-const TweetImage = wreq(73673).Z;
+const TweetImage = some((e) => e?.prototype?._renderImage);
 
 //#endregion
 //#region src/ui/Paginator.tsx
