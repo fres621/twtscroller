@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "outDir": "dist",
+        "strict": false,
         "target": "esnext",
         "module": "nodenext",
         "moduleResolution": "nodenext",

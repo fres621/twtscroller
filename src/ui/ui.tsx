@@ -1,6 +1,6 @@
 import type { Entry, Tweet, TweetLegacy } from '../types/api'
 import { Paginator } from './Paginator';
-import { apiClient, featureSwitches, makeFetcher, userId, React, ReactDOM, tweetTextParts, TextPart, TweetImage } from '@finds';
+import { apiClient, featureSwitches, makeFetcher, userId, React, tweetTextParts, TextPart, TweetImage, SectionComponent } from '@finds';
 import { FetcherModule, Page, pageFetcher } from '@fetcher';
 
 function renderContentAST(ast: any[]) {
@@ -8,7 +8,7 @@ function renderContentAST(ast: any[]) {
     // return ast.map((part,key) => <TextPart part={part} key={key} linkify={true} />);
     let colors: Record<string, string> = { hashtag: 'blue', mention: 'blue' };
     return (
-        <span>
+        <span className='paginator-text paginator-tweet-content'>
             {ast.map((node: any) =>
                 node.entityType == 'emoji' ? (
                     <img src={node.url} style={{ display: 'inline', width: '1em', height: '1em' }} />
@@ -74,7 +74,7 @@ const Tweet = React.memo(({ result }: { result: Tweet }) => {
                 <img src={author.avatar.image_url} style={{ width: 32, height: 32, borderRadius: 16 }} />
             </a>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                <span>
+                <span className='paginator-text paginator-tweet-author'>
                     <b>{author.core.name}</b> @{author.core.screen_name}
                 </span>
                 {renderContentAST(getAST(tweet.legacy))}
@@ -89,6 +89,18 @@ const Tweet = React.memo(({ result }: { result: Tweet }) => {
     );
 });
 
+function replaceLikesComponent(c: any) {
+    let injected: any;
+    let original = SectionComponent.prototype.render;
+    SectionComponent.prototype.render = function () {
+        if (this.props.title !== "Likes") return original.apply(this);
+        if (injected) return injected;
+        window.scrollTo(0, 0);
+        injected = c;
+        return injected;
+    }
+    window.scrollTo(0, document.body.scrollHeight);
+}
 
 export async function startAndInject() {
     let mod = await makeFetcher({
@@ -103,11 +115,11 @@ export async function startAndInject() {
     }
     let fetcher = pageFetcher({ mod, userId, pagesToKeep: 2, eachPause: 500, tenPause: 2000, initialState });
     fetcher.start();
-    ReactDOM.createRoot(document.querySelector('section')).render(React.createElement(App, { fetcher }));
+    replaceLikesComponent(React.createElement(App, { fetcher }));
 }
 
 function isTweetEntry(entry: Entry) {
-    return !!entry.content.itemContent;
+    return !!entry?.content?.itemContent;
 }
 
 class ErrorBoundary extends React.Component<any, any> {

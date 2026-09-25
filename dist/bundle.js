@@ -24,29 +24,17 @@ function some(condition) {
 		for (let a of Object.values(e.exports)) if (condition(a)) return a;
 	} catch {}
 }
-const ApiClient = some((a) => a?.prototype?.getUnversioned);
-const FeatureSwitchThing = some((a) => a.toString().includes("this.getFeatureSwitch"));
+const client = new (some((e) => e.toString().includes("{get api(){return")))({});
 const makeFetcher = some((a) => a.toString().includes("fetchUserTweets:"));
-const featureSwitches = new FeatureSwitchThing(() => false);
-const apiClient = new ApiClient(featureSwitches);
-const auth = some((a) => a.toString().includes("auth_token&&"));
-const req = some((e) => e.toString().includes("new XMLHttpRequest;let"));
-apiClient.client._dispatch = (data) => req({
-	...data,
-	headers: {
-		...data.headers,
-		...Object.fromEntries(auth()),
-		"x-twitter-auth-type": "OAuth2Session"
-	}
-});
+const { apiClient, featureSwitches } = client.api;
 let scr = [...document.querySelectorAll("body > script")].find((e) => e.innerText.includes("INITIAL_STATE")).innerText;
 let session = JSON.parse(scr.slice(scr.indexOf(`"session"`) + 10, scr.indexOf("userFeatures") - 2) + "}");
 const userId = session.user_id;
-const tweetTextParts = Object.values(_mods).find((e) => e.exports?.ZP?.tweetTextParts).exports?.ZP?.tweetTextParts ?? some((a) => a.toString().includes("tweetTextParts"));
+const tweetTextParts = some((e) => e?.tweetTextParts)?.tweetTextParts || some((e) => e?.toString()?.includes("tweetTextParts:"));
 const React = Object.values(_mods).find((e) => e.exports?.useEffect).exports;
-const ReactDOM = Object.values(_mods).find((e) => e.exports?.createPortal).exports;
 const TextPart = some((e) => e.type?.toString().includes(".MENTION?"));
 const TweetImage = some((e) => e?.prototype?._renderImage);
+const SectionComponent = some((e) => e.prototype?.render?.toString().includes("id:this._listDomId,"));
 
 //#endregion
 //#region src/ui/Paginator.tsx
@@ -63,12 +51,13 @@ window.registerStyles({
 		textAlign: "center",
 		verticalAlign: "middle",
 		"userSelect": "none"
-	}
+	},
+	"paginator-text": { font: "14px Segoe UI,Roboto,Helvetica,Arial,sans-serif" }
 });
 function Paginator(props) {
 	return /* @__PURE__ */ React.createElement("div", null, props.pages.map((page) => /* @__PURE__ */ React.createElement("span", {
 		onClick: (_) => props.onClickPage(page.id),
-		className: "paginator-page " + (page.id == props.selectedPageId ? " paginator-page-selected" : "")
+		className: "paginator-text paginator-page " + (page.id == props.selectedPageId ? " paginator-page-selected" : "")
 	}, page.label)));
 }
 
@@ -144,7 +133,7 @@ function renderContentAST(ast) {
 		hashtag: "blue",
 		mention: "blue"
 	};
-	return /* @__PURE__ */ React.createElement("span", null, ast.map((node) => node.entityType == "emoji" ? /* @__PURE__ */ React.createElement("img", {
+	return /* @__PURE__ */ React.createElement("span", { className: "paginator-text paginator-tweet-content" }, ast.map((node) => node.entityType == "emoji" ? /* @__PURE__ */ React.createElement("img", {
 		src: node.url,
 		style: {
 			display: "inline",
@@ -209,8 +198,20 @@ const Tweet = React.memo(({ result }) => {
 		display: "flex",
 		flexDirection: "column",
 		flex: 1
-	} }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("b", null, author.core.name), " @", author.core.screen_name), renderContentAST(getAST(tweet.legacy)), tweet.legacy.entities.media?.length && renderImage(tweet.legacy.entities.media[0]), tweet.quoted_status_result && /* @__PURE__ */ React.createElement("div", { style: { border: "1px solid blue" } }, /* @__PURE__ */ React.createElement(Tweet, { result: tweet.quoted_status_result.result }))));
+	} }, /* @__PURE__ */ React.createElement("span", { className: "paginator-text paginator-tweet-author" }, /* @__PURE__ */ React.createElement("b", null, author.core.name), " @", author.core.screen_name), renderContentAST(getAST(tweet.legacy)), tweet.legacy.entities.media?.length && renderImage(tweet.legacy.entities.media[0]), tweet.quoted_status_result && /* @__PURE__ */ React.createElement("div", { style: { border: "1px solid blue" } }, /* @__PURE__ */ React.createElement(Tweet, { result: tweet.quoted_status_result.result }))));
 });
+function replaceLikesComponent(c) {
+	let injected;
+	let original = SectionComponent.prototype.render;
+	SectionComponent.prototype.render = function() {
+		if (this.props.title !== "Likes") return original.apply(this);
+		if (injected) return injected;
+		window.scrollTo(0, 0);
+		injected = c;
+		return injected;
+	};
+	window.scrollTo(0, document.body.scrollHeight);
+}
 async function startAndInject() {
 	let mod = await makeFetcher({
 		apiClient,
@@ -228,10 +229,10 @@ async function startAndInject() {
 		initialState
 	});
 	fetcher.start();
-	ReactDOM.createRoot(document.querySelector("section")).render(React.createElement(App, { fetcher }));
+	replaceLikesComponent(React.createElement(App, { fetcher }));
 }
 function isTweetEntry(entry) {
-	return !!entry.content.itemContent;
+	return !!entry?.content?.itemContent;
 }
 var ErrorBoundary = class extends React.Component {
 	constructor(props) {
